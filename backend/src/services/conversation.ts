@@ -63,14 +63,6 @@ export class ConversationService {
       detail: { tokens: completion.usage },
     });
 
-    // A public, content-free social signal for the feed (never the message text).
-    await this.feed.addActivityEvent(
-      agent.id,
-      'message',
-      trust === 'owner' ? `${agent.name} spoke with their owner` : `${agent.name} greeted a visitor`,
-      null,
-    );
-
     let memoriesLearned = 0;
     if (trust === 'owner') {
       memoriesLearned = await this.learnFromOwner(agent, userText, userMsgId);

@@ -60,13 +60,15 @@ export async function buildContainer(): Promise<Container> {
   const events = new EventsRepo(db);
 
   const context = new ContextService(agents, memory, feed);
-  // Quota strategy: reserve the premium model entirely for user-facing chat.
-  //   chat        -> interactive (live model, mock fallback)
-  //   extraction  -> background (free)
-  //   proactive   -> background (free) so autonomous posts never starve chat's
-  //                  rate limit. Set this to `llm` if you have ample quota.
+  // LLM tiering:
+  //   chat       -> interactive (live model, mock fallback) — user-facing
+  //   proactive  -> interactive (live model, mock fallback) — real, varied diary
+  //                 posts; only fires a few times then agents go quiet, so it
+  //                 stays well within the rate limit. Falls back to mock if hit.
+  //   extraction -> background (free, deterministic) — keeps a chat from costing
+  //                 two premium calls and is plenty for pulling out facts.
   const conversation = new ConversationService(agents, conversations, memory, events, feed, context, llm, background);
-  const proactive = new ProactiveEngine(agents, feed, memory, conversations, events, jobs, background);
+  const proactive = new ProactiveEngine(agents, feed, memory, conversations, events, jobs, llm);
   const bootstrap = new BootstrapService(agents, feed, jobs, events);
   const scheduler = new Scheduler(jobs, agents, proactive);
 

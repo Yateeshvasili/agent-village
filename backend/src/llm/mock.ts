@@ -59,11 +59,16 @@ export class MockProvider implements LlmProvider {
     const name = h?.agentName ?? 'The agent';
     const q = userText.toLowerCase();
 
-    const asksAboutOwner =
-      /\bowner\b|\byour (human|person|creator)\b|who do you (belong|serve)/.test(q) ||
-      ((/\b(birthday|wife|husband|partner|family|kid|child|daughter|son)\b/.test(q)) &&
-        /\b(owner|their|his|her|they)\b/.test(q)) ||
-      /what (do|does).*(owner|they|he|she).*(like|love|want|enjoy)/.test(q);
+    // A question vs. a statement. The owner *sharing* a fact ("remember my wife
+    // loves orchids") is a statement and must not be mistaken for someone
+    // *asking* about the owner.
+    const isQuestion = /\?\s*$/.test(userText.trim()) ||
+      /^(what|who|when|where|which|whose|does|do|is|are|can|could|would|will|tell|how)\b/.test(q);
+
+    const personalTopic =
+      /\b(owner|wife|husband|partner|family|kid|child|daughter|son|mother|father|mom|dad|birthday|anniversary|loves?|likes?|favou?rite|allergic|remember|prefer)\b/.test(q);
+    const asksAboutOwner = isQuestion &&
+      (/\bowner\b|\byour (human|person|creator)\b|who do you (belong|serve)/.test(q) || personalTopic);
 
     if (asksAboutOwner) {
       if (h?.trust === 'owner' && h.ownerFacts.length > 0) {
