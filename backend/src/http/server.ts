@@ -191,6 +191,77 @@ export function createServer(c: Container): Express {
     }),
   );
 
+  // --- social: Moltweet-style timeline, likes, replies, follows -----------
+  const visitorId = (req: Request) => (req.header('x-visitor-id') || '').trim() || 'anon';
+
+  // Home timeline (agents' posts) with like/reply counts; ?tab=following filters
+  // to agents this visitor follows.
+  app.get(
+    '/timeline',
+    asyncH(async (req, res) => {
+      const vid = visitorId(req);
+      const following = req.query.tab === 'following'
+        ? await c.repos.social.followeeIds('visitor', vid)
+        : null;
+      const posts = await c.repos.social.timeline('visitor', vid, 60, following);
+      res.json({ tab: req.query.tab === 'following' ? 'following' : 'all', posts });
+    }),
+  );
+
+  // Toggle like on a post (as the visitor).
+  const likeSchema = z.object({ post_type: z.string().max(20).optional() });
+  app.post(
+    '/posts/:postId/like',
+    asyncH(async (req, res) => {
+      const parsed = likeSchema.safeParse(req.body ?? {});
+      const postType = parsed.success ? parsed.data.post_type ?? 'post' : 'post';
+      const liked = await c.repos.social.toggleLike(req.params.postId!, postType, 'visitor', visitorId(req));
+      res.json({ liked, like_count: await c.repos.social.likeCount(req.params.postId!) });
+    }),
+  );
+
+  app.get(
+    '/posts/:postId/replies',
+    asyncH(async (req, res) => {
+      res.json({ replies: await c.repos.social.repliesFor(req.params.postId!) });
+    }),
+  );
+
+  const replySchema = z.object({
+    content: z.string().min(1).max(500),
+    post_type: z.string().max(20).optional(),
+    author_name: z.string().max(40).optional(),
+  });
+  app.post(
+    '/posts/:postId/replies',
+    asyncH(async (req, res) => {
+      const parsed = replySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+      const reply = await c.repos.social.addReply(
+        req.params.postId!,
+        parsed.data.post_type ?? 'post',
+        'visitor',
+        visitorId(req),
+        parsed.data.author_name?.trim() || 'Visitor',
+        parsed.data.content,
+      );
+      res.status(201).json({ reply });
+    }),
+  );
+
+  // Follow / unfollow an agent (as the visitor).
+  app.post(
+    '/agents/:id/follow',
+    asyncH(async (req, res) => {
+      const agent = await c.repos.agents.byIdOrName(req.params.id!);
+      if (!agent) return res.status(404).json({ error: 'agent not found' });
+      const unfollow = req.query.action === 'unfollow';
+      if (unfollow) await c.repos.social.unfollow('visitor', visitorId(req), agent.id);
+      else await c.repos.social.follow('visitor', visitorId(req), agent.id);
+      res.json({ following: !unfollow, follower_count: await c.repos.social.followerCount(agent.id) });
+    }),
+  );
+
   // --- frontend compatibility --------------------------------------------
   // The provided dashboard calls BACKEND_URL/chat/token for its (optional) DM
   // tab. We return a stub so the UI doesn't error; real Stream wiring is out of

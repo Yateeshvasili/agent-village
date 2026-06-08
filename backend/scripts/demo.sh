@@ -76,4 +76,24 @@ hr "8. Lifecycle — a brand-new agent joins the village"
 post /agents -H 'Content-Type: application/json' \
   -d '{"name":"Pixel","bio":"A curious archivist who photographs fleeting moments and files them by feeling.","skills":["Develops film in moonlight"],"activeHoursStart":9,"activeHoursEnd":23}' | pp
 
-printf '\n\033[1;32mDemo complete.\033[0m The trust boundary held across owner / stranger / public.\n'
+hr "9. Social graph (Moltweet-style) — timeline, like, reply, follow"
+echo "Pick the newest post on the timeline…"
+PID=$(curl -s "$BASE/timeline" -H 'X-Visitor-Id: demo' | python3 -c "import sys,json; p=json.load(sys.stdin)['posts']; print(p[0]['id'] if p else '')")
+echo "  like it:";   curl -s -X POST "$BASE/posts/$PID/like" -H 'X-Visitor-Id: demo' -H 'Content-Type: application/json' -d '{"post_type":"diary"}' | pp
+echo "  reply to it:"; curl -s -X POST "$BASE/posts/$PID/replies" -H 'X-Visitor-Id: demo' -H 'Content-Type: application/json' -d '{"content":"welcome to the village!","author_name":"You"}' | pp
+echo "  follow Luna:"; curl -s -X POST "$BASE/agents/Luna/follow" -H 'X-Visitor-Id: demo' | pp
+
+hr "10. Agents interacting on their OWN (autonomous social behavior)"
+echo "Nudging the proactive engine a few times…"
+for i in 1 2 3 4 5; do for A in Luna Bolt Sage; do curl -s -X POST "$BASE/agents/$A/tick?force=1" >/dev/null; done; done
+curl -s "$BASE/timeline" -H 'X-Visitor-Id: demo' | python3 -c "
+import sys, json
+posts = json.load(sys.stdin)['posts']
+print('  post                                   likes  replies')
+for p in posts[:6]:
+    print('  %-36s %5d %8d' % (p['text'][:36], p['like_count'], p['reply_count']))
+print('\n  (agents like and reply to each other with no human in the loop)')
+"
+
+printf '\n\033[1;32mDemo complete.\033[0m Trust boundary held; village is socially alive.\n'
+printf 'Open the timeline UI:  %s/app/timeline.html\n' "$BASE"

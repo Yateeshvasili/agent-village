@@ -11,6 +11,7 @@ import { ConversationsRepo } from './repositories/conversations.js';
 import { FeedRepo } from './repositories/feed.js';
 import { JobsRepo } from './repositories/jobs.js';
 import { EventsRepo } from './repositories/events.js';
+import { SocialRepo } from './repositories/social.js';
 
 import { ContextService } from './services/context.js';
 import { ConversationService } from './services/conversation.js';
@@ -29,6 +30,7 @@ export interface Container {
     feed: FeedRepo;
     jobs: JobsRepo;
     events: EventsRepo;
+    social: SocialRepo;
   };
   services: {
     context: ContextService;
@@ -58,6 +60,7 @@ export async function buildContainer(): Promise<Container> {
   const feed = new FeedRepo(db);
   const jobs = new JobsRepo(db);
   const events = new EventsRepo(db);
+  const social = new SocialRepo(db);
 
   const context = new ContextService(agents, memory, feed);
   // LLM tiering:
@@ -68,14 +71,14 @@ export async function buildContainer(): Promise<Container> {
   //   extraction -> background (free, deterministic) — keeps a chat from costing
   //                 two premium calls and is plenty for pulling out facts.
   const conversation = new ConversationService(agents, conversations, memory, events, feed, context, llm, background);
-  const proactive = new ProactiveEngine(agents, feed, memory, conversations, events, jobs, llm);
+  const proactive = new ProactiveEngine(agents, feed, memory, conversations, events, jobs, social, llm);
   const bootstrap = new BootstrapService(agents, feed, jobs, events);
   const scheduler = new Scheduler(jobs, agents, proactive);
 
   return {
     db,
     llm,
-    repos: { agents, memory, conversations, feed, jobs, events },
+    repos: { agents, memory, conversations, feed, jobs, events, social },
     services: { context, conversation, proactive, bootstrap },
     scheduler,
   };

@@ -31,7 +31,7 @@ export interface ChatHints {
   ownerFacts: string[]; // always empty for non-owner contexts
 }
 
-export type CompleteTask = 'diary' | 'status' | 'learning' | 'owner_checkin' | 'extract_memory';
+export type CompleteTask = 'diary' | 'status' | 'learning' | 'owner_checkin' | 'extract_memory' | 'reply';
 
 export interface CompleteHints {
   task: CompleteTask;

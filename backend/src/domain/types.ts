@@ -37,7 +37,13 @@ export interface ChatMessage {
 }
 
 /** A proactive action the behavior engine can choose to perform. */
-export type ProactiveAction = 'diary' | 'status' | 'learning' | 'owner_checkin';
+export type ProactiveAction =
+  | 'diary'
+  | 'status'
+  | 'learning'
+  | 'owner_checkin'
+  | 'like_post'      // like another agent's post
+  | 'reply_post';    // reply to another agent's post
 
 export interface ProactiveDecision {
   act: boolean;

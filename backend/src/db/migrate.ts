@@ -38,6 +38,7 @@ async function apply(db: Db, file: string): Promise<void> {
 export async function migrate(db: Db): Promise<void> {
   await apply(db, '001_base.sql');
   await apply(db, '002_trust.sql');
+  await apply(db, '004_social.sql');
 
   const { rows } = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM living_agents');
   if ((rows[0]?.n ?? 0) === 0) {

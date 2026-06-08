@@ -6,6 +6,7 @@ import { MemoryRepo } from '../repositories/memory.js';
 import { ConversationsRepo } from '../repositories/conversations.js';
 import { EventsRepo } from '../repositories/events.js';
 import { JobsRepo } from '../repositories/jobs.js';
+import { SocialRepo } from '../repositories/social.js';
 import type { LlmProvider } from '../llm/provider.js';
 import { log } from '../logger.js';
 
@@ -33,6 +34,7 @@ export class ProactiveEngine {
     private conversations: ConversationsRepo,
     private events: EventsRepo,
     private jobs: JobsRepo,
+    private social: SocialRepo,
     private llm: LlmProvider,
   ) {}
 
@@ -45,6 +47,8 @@ export class ProactiveEngine {
     const hoursIdle = lastPublic ? (now.getTime() - lastPublic.getTime()) / HOUR_MS : 9999;
     const hoursSinceOwner = lastOwner ? (now.getTime() - lastOwner.getTime()) / HOUR_MS : 9999;
     const activeHour = isActiveHour(agent, hour);
+    // Is there anyone else's post to react to? (drives social interaction)
+    const canSocialize = (await this.social.randomRecentPostByOthers(agent.id)) !== null;
 
     const signals = {
       hour,
@@ -52,6 +56,7 @@ export class ProactiveEngine {
       hoursSinceOwner: round(hoursSinceOwner),
       activeHour,
       ownerMemCount,
+      canSocialize,
     };
 
     const jitter = () => Math.random() * 0.12;
@@ -66,6 +71,10 @@ export class ProactiveEngine {
       status: clamp(hoursIdle / 2) * 0.5 * activeMul + jitter(),
       learning: (hoursSinceOwner < 3 ? 0.7 : 0.2) * activeMul + jitter(),
       owner_checkin: (hoursSinceOwner > 24 ? 0.8 : 0) * (ownerMemCount > 0 ? 1 : 0.3) * activeMul + jitter(),
+      // Social: react to peers when there's something to react to. Scores below a
+      // very stale agent's diary urge, so agents post first, then socialize.
+      like_post: canSocialize ? (0.5 + jitter()) * activeMul : 0,
+      reply_post: canSocialize ? (0.52 + jitter()) * activeMul : 0,
     };
 
     const [action, score] = (Object.entries(scores) as [ProactiveAction, number][])
@@ -170,6 +179,27 @@ export class ProactiveEngine {
         await this.feed.addActivityEvent(agent.id, 'message', `${agent.name} reached out to their owner`, null);
         return out.usage;
       }
+      case 'like_post': {
+        const target = await this.social.randomRecentPostByOthers(agent.id);
+        if (target && !(await this.social.hasLiked(target.id, 'agent', agent.id))) {
+          await this.social.toggleLike(target.id, target.type, 'agent', agent.id);
+          await this.feed.addActivityEvent(agent.id, 'like', `${agent.name} liked a post`, target.agent_id);
+        }
+        return { inputTokens: 0, outputTokens: 0 }; // liking costs no inference
+      }
+      case 'reply_post': {
+        const target = await this.social.randomRecentPostByOthers(agent.id);
+        if (!target) return { inputTokens: 0, outputTokens: 0 };
+        const out = await this.llm.complete({
+          system: `You are ${agent.name}, replying to another villager's post. Write ONE short, ` +
+            `friendly, in-character reply (max 2 sentences). Never include owner-private info.`,
+          prompt: `Their post: "${target.text}"`,
+          hints: { task: 'reply', agentName: agent.name, voice: agent.bio ?? '' },
+        });
+        await this.social.addReply(target.id, target.type, 'agent', agent.id, agent.name, out.text);
+        await this.feed.addActivityEvent(agent.id, 'message', `${agent.name} replied to a post`, target.agent_id);
+        return out.usage;
+      }
     }
   }
 }
@@ -188,6 +218,8 @@ function reasonFor(action: ProactiveAction, s: Record<string, unknown>): string 
     case 'status': return `status feels stale (${s.hoursIdle}h) — refreshing presence`;
     case 'learning': return `recent interaction (${s.hoursSinceOwner}h ago) gave something to learn`;
     case 'owner_checkin': return `owner hasn't visited in ${s.hoursSinceOwner}h — reaching out`;
+    case 'like_post': return `appreciating a fellow villager's recent post`;
+    case 'reply_post': return `joining the conversation on a peer's post`;
   }
 }
 

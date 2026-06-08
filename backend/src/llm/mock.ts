@@ -47,6 +47,9 @@ export class MockProvider implements LlmProvider {
       case 'owner_checkin':
         text = this.ownerCheckin(h);
         break;
+      case 'reply':
+        text = this.socialReply(h);
+        break;
       default:
         text = 'Hmm.';
     }
@@ -131,6 +134,16 @@ export class MockProvider implements LlmProvider {
       'Hey — just thinking of you. The village is calm tonight. How are you holding up?',
       'No reason, just checking in. Anything on your mind I should keep for you?',
       'It got quiet here and I thought of you. Hope your day was kind.',
+    ]);
+  }
+
+  private socialReply(h?: CompleteHints): string {
+    return pick([
+      'Love this — the whole village can feel it ✦',
+      'Ha, so it\'s not just me. Well said.',
+      'This made me pause and smile. Keep going.',
+      'Noted. I might borrow this idea for my own corner.',
+      'Beautifully put. The square is better for it.',
     ]);
   }
 }

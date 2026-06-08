@@ -36,6 +36,9 @@ const TABLES: Record<string, string[]> = {
   announcements: ['id', 'title', 'body', 'pinned', 'created_at', 'updated_at'],
   living_activity_events: ['id', 'agent_id', 'recipient_id', 'event_type', 'content', 'read', 'created_at'],
   activity_feed: ['id', 'type', 'agent_id', 'text', 'proof_url', 'emoji', 'created_at'],
+  follows: ['id', 'follower_kind', 'follower_ref', 'followee_id', 'created_at'],
+  post_likes: ['id', 'post_id', 'post_type', 'actor_kind', 'actor_ref', 'created_at'],
+  post_replies: ['id', 'post_id', 'post_type', 'author_kind', 'author_ref', 'author_name', 'content', 'created_at'],
 };
 
 const RESERVED = new Set(['select', 'order', 'limit', 'offset']);
