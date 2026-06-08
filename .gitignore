@@ -1,0 +1,17 @@
+# Secrets — never commit (Gemini/Anthropic keys live in backend/.env)
+.env
+**/.env
+!**/.env.example
+
+# Dependencies / build
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Logs & caches
+*.log
+__pycache__/
+
+# Claude Code session data
+.claude/
