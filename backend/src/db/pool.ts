@@ -40,7 +40,11 @@ export async function getDb(): Promise<Db> {
 
 async function createPostgres(connectionString: string): Promise<Db> {
   const { default: pg } = await import('pg');
-  const pool = new pg.Pool({ connectionString, max: 10 });
+  // Managed Postgres (Supabase, RDS, etc.) requires TLS. Enable it for any
+  // non-local host; local Postgres connects without it.
+  const isLocal = /@(localhost|127\.0\.0\.1)/.test(connectionString);
+  const ssl = isLocal ? undefined : { rejectUnauthorized: false };
+  const pool = new pg.Pool({ connectionString, max: 10, ssl });
 
   const wrap = (runner: { query: Function }): Db => ({
     backend: 'postgres',
