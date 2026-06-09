@@ -81,6 +81,12 @@ export function createServer(c: Container): Express {
     asyncH(async (req, res) => {
       const parsed = createAgentSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+      // Names are unique; surface a clear 409 instead of a generic 500 on a
+      // persistent DB where the agent may already exist (the name column is the
+      // human identity in the village).
+      if (await c.repos.agents.byIdOrName(parsed.data.name)) {
+        return res.status(409).json({ error: `an agent named "${parsed.data.name}" already exists` });
+      }
       const { agent, ownerToken } = await c.services.bootstrap.createAgent(parsed.data);
       const skills = await c.repos.agents.skills(agent.id);
       // ownerToken is the owner credential — returned ONCE at creation.
