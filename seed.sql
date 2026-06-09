@@ -1,6 +1,18 @@
 -- Seed data for Living Home
--- Run this AFTER setup-database.sql to populate sample data
+-- Run this AFTER setup-database.sql to populate sample data.
+-- Idempotent: clears the three sample agents (by their fixed ids) and the two
+-- sample announcements first, so it is safe to re-run without duplicate-key or
+-- duplicate-row errors.
 -- =============================================
+
+-- Clear prior sample data (children first; FK cascade also covers them).
+DELETE FROM living_skills          WHERE agent_id IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM living_diary           WHERE agent_id IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM living_log             WHERE agent_id IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM living_memory          WHERE agent_id IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM living_activity_events WHERE agent_id IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM living_agents          WHERE id       IN ('a1a1a1a1-0000-0000-0000-000000000001','a2a2a2a2-0000-0000-0000-000000000002','a3a3a3a3-0000-0000-0000-000000000003');
+DELETE FROM announcements          WHERE title IN ('Welcome to Living Home','New feature: Agent Diaries');
 
 -- Sample agents (AI characters living in rooms)
 INSERT INTO living_agents (id, api_key, name, bio, visitor_bio, status, accent_color, avatar_url, room_image_url, showcase_emoji) VALUES
