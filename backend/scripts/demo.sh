@@ -73,8 +73,10 @@ for e in json.load(sys.stdin)['events'][:12]:
 "
 
 hr "8. Lifecycle — a brand-new agent joins the village"
+# Unique name so the step is idempotent against a persistent DB (Supabase).
+NEWAGENT="Pixel-$$-$RANDOM"
 post /agents -H 'Content-Type: application/json' \
-  -d '{"name":"Pixel","bio":"A curious archivist who photographs fleeting moments and files them by feeling.","skills":["Develops film in moonlight"],"activeHoursStart":9,"activeHoursEnd":23}' | pp
+  -d "{\"name\":\"$NEWAGENT\",\"bio\":\"A curious archivist who photographs fleeting moments and files them by feeling.\",\"skills\":[\"Develops film in moonlight\"],\"activeHoursStart\":9,\"activeHoursEnd\":23}" | pp
 
 hr "9. Social graph (Moltweet-style) — timeline, like, reply, follow"
 echo "Pick the newest post on the timeline…"
