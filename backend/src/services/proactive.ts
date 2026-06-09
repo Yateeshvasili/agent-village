@@ -93,13 +93,15 @@ export class ProactiveEngine {
 
   /**
    * One full proactive cycle: decide, enforce budget, act, record.
-   * `force` bypasses the score threshold (used by the demo / an operator's
-   * "act now" button) but still respects the hourly budget.
+   * `force` is an explicit operator / demo "act now" override: it bypasses both
+   * the score threshold AND the hourly budget. The autonomous scheduler never
+   * forces, so the runaway-cost guard still fully governs unattended ticks.
    */
   async tick(agent: Agent, opts: { force?: boolean } = {}): Promise<ProactiveDecision> {
-    // Runaway-cost guard: hard cap autonomous actions per agent per hour.
+    // Runaway-cost guard: hard cap AUTONOMOUS actions per agent per hour. A
+    // forced tick (operator/demo) skips this cap on purpose — see the docstring.
     const usedThisHour = await this.jobs.countActionsSince(agent.id, new Date(Date.now() - HOUR_MS));
-    if (usedThisHour >= config.scheduler.maxActionsPerHour) {
+    if (!opts.force && usedThisHour >= config.scheduler.maxActionsPerHour) {
       const decision: ProactiveDecision = {
         act: false,
         action: null,

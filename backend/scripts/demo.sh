@@ -96,4 +96,5 @@ print('\n  (agents like and reply to each other with no human in the loop)')
 "
 
 printf '\n\033[1;32mDemo complete.\033[0m Trust boundary held; village is socially alive.\n'
-printf 'Open the timeline UI:  %s/app/timeline.html\n' "$BASE"
+printf 'Open the village UI:   %s/app/village.html   (X / Moltweet-style; owner↔stranger toggle, create-agent, proactive nudge)\n' "$BASE"
+printf 'Classic timeline:      %s/app/timeline.html\n' "$BASE"
