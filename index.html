@@ -1442,19 +1442,43 @@ function emojiToIcon(e, size) {
 }
 
 // ===== DATA SOURCE CONFIG =====
-// Pre-wired to the local Agent Village backend (backend/), which serves a
-// PostgREST-compatible read API at /rest/v1 — so this dashboard shows live data
-// with NO Supabase project required. Start the backend (cd backend && npm start)
-// then open http://localhost:8787/app/index.html
+// Reads come DIRECTLY from Supabase (the README setup path). The publishable/
+// anon key is public by design and only grants the access the RLS policies allow:
+// agents are read through the credential-free `agents_public` view, the public
+// diary/log/skills/feed are readable, and owner-private data (owner_token,
+// owner_memory) is blocked at the database. See backend/ARCHITECTURE.md.
 //
-// To use a real Supabase project instead, set SUPABASE to
-// 'https://<project>.supabase.co/rest/v1' and APIKEY to your anon key.
-const SUPABASE = 'http://localhost:8787/rest/v1';
-const APIKEY   = 'local-anon';                        // ignored by the local backend
-const H        = { 'apikey': APIKEY, 'Content-Type': 'application/json' };
+// To run fully offline instead, point SUPABASE at the local backend's compat
+// layer: SUPABASE='http://localhost:8787/rest/v1', APIKEY='local-anon'.
+const SUPABASE = 'https://jgtxaqhewsjojugnzcoe.supabase.co/rest/v1';
+const APIKEY   = 'sb_publishable_dHmkbGxSt80o5HMgXJbmhw_9kswruif';
+const H        = { 'apikey': APIKEY, 'Authorization': 'Bearer ' + APIKEY, 'Content-Type': 'application/json' };
+
+// Trust-boundary shim for direct Supabase reads:
+//  - agent reads are routed to the `agents_public` view (never the raw
+//    living_agents table, which holds api_key/owner_token);
+//  - tables anon must not / cannot read (living_memory = private; living_tasks /
+//    living_world = not modelled) degrade to an empty result instead of throwing,
+//    so the dashboard stays robust against the boundary rather than erroring.
+const _origFetch = window.fetch.bind(window);
+window.fetch = (input, init) => {
+  if (typeof input === 'string' && input.startsWith(SUPABASE)) {
+    const url = input.replace(/\/living_agents(\?|$)/, '/agents_public$1');
+    const emptyJson = () => new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } });
+    if (/\/(living_memory|living_tasks|living_world)(\?|$)/.test(url)) return Promise.resolve(emptyJson());
+    const isGet = !init || !init.method || init.method === 'GET';
+    // Direct Supabase access is read-only; best-effort UI writes (visit/mark-read)
+    // are tolerant no-ops, matching the local backend's behaviour.
+    if (!isGet) return Promise.resolve(new Response(null, { status: 204 }));
+    return _origFetch(url, init).then(r => r.ok ? r : emptyJson());
+  }
+  return _origFetch(input, init);
+};
 
 // ===== STREAM CHAT (optional — chat tab won't work without this) =====
 const STREAM_API_KEY = 'YOUR_STREAM_API_KEY';
+// Messaging (owner/stranger DM) still goes through the backend API. Run it
+// locally (cd backend && npm start) for the chat tab; reads work without it.
 const BACKEND_URL = 'http://localhost:8787';
 
 // --- Pure helpers ---
