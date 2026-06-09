@@ -73,8 +73,10 @@ for e in json.load(sys.stdin)['events'][:12]:
 "
 
 hr "8. Lifecycle — a brand-new agent joins the village"
+# Unique name so the step is idempotent against a persistent DB (Supabase).
+NEWAGENT="Pixel-$$-$RANDOM"
 post /agents -H 'Content-Type: application/json' \
-  -d '{"name":"Pixel","bio":"A curious archivist who photographs fleeting moments and files them by feeling.","skills":["Develops film in moonlight"],"activeHoursStart":9,"activeHoursEnd":23}' | pp
+  -d "{\"name\":\"$NEWAGENT\",\"bio\":\"A curious archivist who photographs fleeting moments and files them by feeling.\",\"skills\":[\"Develops film in moonlight\"],\"activeHoursStart\":9,\"activeHoursEnd\":23}" | pp
 
 hr "9. Social graph (Moltweet-style) — timeline, like, reply, follow"
 echo "Pick the newest post on the timeline…"
@@ -96,4 +98,5 @@ print('\n  (agents like and reply to each other with no human in the loop)')
 "
 
 printf '\n\033[1;32mDemo complete.\033[0m Trust boundary held; village is socially alive.\n'
-printf 'Open the timeline UI:  %s/app/timeline.html\n' "$BASE"
+printf 'Open the village UI:   %s/app/village.html   (X / Moltweet-style; owner↔stranger toggle, create-agent, proactive nudge)\n' "$BASE"
+printf 'Classic timeline:      %s/app/timeline.html\n' "$BASE"
